@@ -1,12 +1,9 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import os
 import shutil
 
 import pytest
 
-from pre_commit_hooks.check_merge_conflict import detect_merge_conflict
+from pre_commit_hooks.check_merge_conflict import main
 from pre_commit_hooks.util import cmd_output
 from testing.util import get_resource_path
 
@@ -19,13 +16,13 @@ def f1_is_a_conflict_file(tmpdir):
     repo2 = tmpdir.join('repo2')
     repo2_f1 = repo2.join('f1')
 
-    cmd_output('git', 'init', '--', repo1.strpath)
+    cmd_output('git', 'init', '--', str(repo1))
     with repo1.as_cwd():
         repo1_f1.ensure()
-        cmd_output('git', 'add', '--', repo1_f1.strpath)
+        cmd_output('git', 'add', '.')
         cmd_output('git', 'commit', '--no-gpg-sign', '-m', 'commit1')
 
-    cmd_output('git', 'clone', repo1.strpath, repo2.strpath)
+    cmd_output('git', 'clone', str(repo1), str(repo2))
 
     # Commit in master
     with repo1.as_cwd():
@@ -74,13 +71,13 @@ def repository_pending_merge(tmpdir):
     repo2 = tmpdir.join('repo2')
     repo2_f1 = repo2.join('f1')
     repo2_f2 = repo2.join('f2')
-    cmd_output('git', 'init', repo1.strpath)
+    cmd_output('git', 'init', str(repo1))
     with repo1.as_cwd():
         repo1_f1.ensure()
-        cmd_output('git', 'add', '--', repo1_f1.strpath)
+        cmd_output('git', 'add', '.')
         cmd_output('git', 'commit', '--no-gpg-sign', '-m', 'commit1')
 
-    cmd_output('git', 'clone', repo1.strpath, repo2.strpath)
+    cmd_output('git', 'clone', str(repo1), str(repo2))
 
     # Commit in master
     with repo1.as_cwd():
@@ -90,7 +87,7 @@ def repository_pending_merge(tmpdir):
     # Commit in clone and pull without committing
     with repo2.as_cwd():
         repo2_f2.write('child\n')
-        cmd_output('git', 'add', '--', repo2_f2.strpath)
+        cmd_output('git', 'add', '.')
         cmd_output('git', 'commit', '--no-gpg-sign', '-m', 'clone commit2')
         cmd_output('git', 'pull', '--no-commit', '--no-rebase')
         # We should end up in a pending merge
@@ -102,7 +99,7 @@ def repository_pending_merge(tmpdir):
 
 @pytest.mark.usefixtures('f1_is_a_conflict_file')
 def test_merge_conflicts_git():
-    assert detect_merge_conflict(['f1']) == 1
+    assert main(['f1']) == 1
 
 
 @pytest.mark.parametrize(
@@ -110,7 +107,7 @@ def test_merge_conflicts_git():
 )
 def test_merge_conflicts_failing(contents, repository_pending_merge):
     repository_pending_merge.join('f2').write_binary(contents)
-    assert detect_merge_conflict(['f2']) == 1
+    assert main(['f2']) == 1
 
 
 @pytest.mark.parametrize(
@@ -118,22 +115,22 @@ def test_merge_conflicts_failing(contents, repository_pending_merge):
 )
 def test_merge_conflicts_ok(contents, f1_is_a_conflict_file):
     f1_is_a_conflict_file.join('f1').write_binary(contents)
-    assert detect_merge_conflict(['f1']) == 0
+    assert main(['f1']) == 0
 
 
 @pytest.mark.usefixtures('f1_is_a_conflict_file')
 def test_ignores_binary_files():
     shutil.copy(get_resource_path('img1.jpg'), 'f1')
-    assert detect_merge_conflict(['f1']) == 0
+    assert main(['f1']) == 0
 
 
 def test_does_not_care_when_not_in_a_merge(tmpdir):
     f = tmpdir.join('README.md')
     f.write_binary(b'problem\n=======\n')
-    assert detect_merge_conflict([str(f.realpath())]) == 0
+    assert main([str(f.realpath())]) == 0
 
 
 def test_care_when_assumed_merge(tmpdir):
     f = tmpdir.join('README.md')
     f.write_binary(b'problem\n=======\n')
-    assert detect_merge_conflict([str(f.realpath()), '--assume-in-merge']) == 1
+    assert main([str(f.realpath()), '--assume-in-merge']) == 1

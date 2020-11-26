@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import os
 
 import pytest
@@ -42,14 +39,14 @@ TEST_SORTS = [
 
 @pytest.mark.parametrize('bad_lines,good_lines,retval', TEST_SORTS)
 def test_integration_good_bad_lines(tmpdir, bad_lines, good_lines, retval):
-    file_path = os.path.join(tmpdir.strpath, 'foo.yaml')
+    file_path = os.path.join(str(tmpdir), 'foo.yaml')
 
     with open(file_path, 'w') as f:
-        f.write("\n".join(bad_lines) + "\n")
+        f.write('\n'.join(bad_lines) + '\n')
 
     assert main([file_path]) == retval
 
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         assert [line.rstrip() for line in f.readlines()] == good_lines
 
 
@@ -110,9 +107,9 @@ def test_first_key():
     lines = ['# some comment', '"a": 42', 'b: 17', '', 'c: 19']
     assert first_key(lines) == 'a": 42'
 
-    # no lines
+    # no lines (not a real situation)
     lines = []
-    assert first_key(lines) is None
+    assert first_key(lines) == ''
 
 
 @pytest.mark.parametrize('bad_lines,good_lines,_', TEST_SORTS)

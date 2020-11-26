@@ -1,9 +1,8 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import collections
+from typing import Dict
+from typing import Optional
+from typing import Sequence
 
 
 CRLF = b'\r\n'
@@ -14,7 +13,7 @@ ALL_ENDINGS = (CR, CRLF, LF)
 FIX_TO_LINE_ENDING = {'cr': CR, 'crlf': CRLF, 'lf': LF}
 
 
-def _fix(filename, contents, ending):
+def _fix(filename: str, contents: bytes, ending: bytes) -> None:
     new_contents = b''.join(
         line.rstrip(b'\r\n') + ending for line in contents.splitlines(True)
     )
@@ -22,11 +21,11 @@ def _fix(filename, contents, ending):
         f.write(new_contents)
 
 
-def fix_filename(filename, fix):
+def fix_filename(filename: str, fix: str) -> int:
     with open(filename, 'rb') as f:
         contents = f.read()
 
-    counts = collections.defaultdict(int)
+    counts: Dict[bytes, int] = collections.defaultdict(int)
 
     for line in contents.splitlines(True):
         for ending in ALL_ENDINGS:
@@ -63,7 +62,7 @@ def fix_filename(filename, fix):
         return other_endings
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-f', '--fix',
@@ -78,9 +77,9 @@ def main(argv=None):
     for filename in args.filenames:
         if fix_filename(filename, args.fix):
             if args.fix == 'no':
-                print('{}: mixed line endings'.format(filename))
+                print(f'{filename}: mixed line endings')
             else:
-                print('{}: fixed mixed line endings'.format(filename))
+                print(f'{filename}: fixed mixed line endings')
             retv = 1
     return retv
 

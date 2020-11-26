@@ -1,10 +1,10 @@
 -   id: autopep8-wrapper
-    name: autopep8 wrapper
-    description: This is deprecated, use pre-commit/mirrors-autopep8 instead.
-    entry: autopep8-wrapper
+    name: autopep8 wrapper (removed)
+    description: (removed) use pre-commit/mirrors-autopep8 instead.
+    entry: pre-commit-hooks-removed autopep8-wrapper autopep8 https://github.com/pre-commit/mirrors-autopep8
     language: python
-    types: [python]
-    args: [-i]
+    always_run: true
+    pass_filenames: false
 -   id: check-added-large-files
     name: Check for added large files
     description: Prevent giant files from being committed
@@ -17,11 +17,11 @@
     language: python
     types: [python]
 -   id: check-byte-order-marker
-    name: Check for byte-order marker
-    description: Forbid files which have a UTF-8 byte-order marker
+    name: 'check BOM - deprecated: use fix-byte-order-marker'
+    description: forbid files which have a UTF-8 byte-order marker
     entry: check-byte-order-marker
     language: python
-    types: [python]
+    types: [text]
 -   id: check-builtin-literals
     name: Check builtin type constructor use
     description: Require literal syntax when initializing empty or zero Python builtin types.
@@ -45,6 +45,7 @@
     entry: check-executables-have-shebangs
     language: python
     types: [text, executable]
+    stages: [commit, push, manual]
 -   id: check-json
     name: Check JSON
     description: This hook checks json files for parseable syntax.
@@ -69,6 +70,12 @@
     entry: check-symlinks
     language: python
     types: [symlink]
+-   id: check-toml
+    name: Check Toml
+    description: This hook checks toml files for parseable syntax.
+    entry: check-toml
+    language: python
+    types: [toml]
 -   id: check-vcs-permalinks
     name: Check vcs permalinks
     description: Ensures that links to vcs websites are permalinks.
@@ -93,6 +100,12 @@
     entry: debug-statement-hook
     language: python
     types: [python]
+-   id: destroyed-symlinks
+    name: Detect Destroyed Symlinks
+    description: Detects symlinks which are changed to regular files with a content of a path which that symlink was pointing to.
+    entry: destroyed-symlinks
+    language: python
+    types: [file]
 -   id: detect-aws-credentials
     name: Detect AWS Credentials
     description: Detects *your* aws credentials from the aws cli credentials file
@@ -124,6 +137,12 @@
     entry: file-contents-sorter
     language: python
     files: '^$'
+-   id: fix-byte-order-marker
+    name: fix UTF-8 byte order marker
+    description: removes UTF-8 byte order marker
+    entry: fix-byte-order-marker
+    language: python
+    types: [text]
 -   id: fix-encoding-pragma
     name: Fix python encoding pragma
     language: python
@@ -131,11 +150,12 @@
     description: 'Add # -*- coding: utf-8 -*- to the top of python files'
     types: [python]
 -   id: flake8
-    name: Flake8
-    description: This hook runs flake8.
-    entry: flake8
+    name: Flake8 (removed)
+    description: (removed) use gitlab.com/pycqa/flake8 instead.
+    entry: pre-commit-hooks-removed flake8 flake8 https://gitlab.com/pycqa/flake8
     language: python
-    types: [python]
+    always_run: true
+    pass_filenames: false
 -   id: forbid-new-submodules
     name: Forbid new submodules
     language: python
@@ -160,11 +180,12 @@
     pass_filenames: false
     always_run: true
 -   id: pyflakes
-    name: Pyflakes (DEPRECATED, use flake8)
-    description: This hook runs pyflakes. (This is deprecated, use flake8).
-    entry: pyflakes
+    name: Pyflakes (removed)
+    description: (removed) use gitlab.com/pycqa/flake8 instead.
+    entry: pre-commit-hooks-removed pyflakes flake8 https://gitlab.com/pycqa/flake8
     language: python
-    types: [python]
+    always_run: true
+    pass_filenames: false
 -   id: requirements-txt-fixer
     name: Fix requirements.txt
     description: Sorts entries in requirements.txt
@@ -183,3 +204,4 @@
     entry: trailing-whitespace-fixer
     language: python
     types: [text]
+    stages: [commit, push, manual]

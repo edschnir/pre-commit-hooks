@@ -1,15 +1,13 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import ast
 import platform
 import sys
 import traceback
+from typing import Optional
+from typing import Sequence
 
 
-def check_ast(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
     args = parser.parse_args(argv)
@@ -21,17 +19,14 @@ def check_ast(argv=None):
             with open(filename, 'rb') as f:
                 ast.parse(f.read(), filename=filename)
         except SyntaxError:
-            print('{}: failed parsing with {} {}:'.format(
-                filename,
-                platform.python_implementation(),
-                sys.version.partition(' ')[0],
-            ))
-            print('\n{}'.format(
-                '    ' + traceback.format_exc().replace('\n', '\n    '),
-            ))
+            impl = platform.python_implementation()
+            version = sys.version.split()[0]
+            print(f'{filename}: failed parsing with {impl} {version}:')
+            tb = '    ' + traceback.format_exc().replace('\n', '\n    ')
+            print(f'\n{tb}')
             retval = 1
     return retval
 
 
 if __name__ == '__main__':
-    exit(check_ast())
+    exit(main())

@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import ast
 
 from pre_commit_hooks.debug_statement_hook import Debug
@@ -37,7 +33,7 @@ def test_finds_breakpoint():
 def test_returns_one_for_failing_file(tmpdir):
     f_py = tmpdir.join('f.py')
     f_py.write('def f():\n    import pdb; pdb.set_trace()')
-    ret = main([f_py.strpath])
+    ret = main([str(f_py)])
     assert ret == 1
 
 
@@ -54,10 +50,10 @@ def test_syntaxerror_file():
 def test_non_utf8_file(tmpdir):
     f_py = tmpdir.join('f.py')
     f_py.write_binary('# -*- coding: cp1252 -*-\nx = "€"\n'.encode('cp1252'))
-    assert main((f_py.strpath,)) == 0
+    assert main((str(f_py),)) == 0
 
 
 def test_py37_breakpoint(tmpdir):
     f_py = tmpdir.join('f.py')
     f_py.write('def f():\n    breakpoint()\n')
-    assert main((f_py.strpath,)) == 1
+    assert main((str(f_py),)) == 1

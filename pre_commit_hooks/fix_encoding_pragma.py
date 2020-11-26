@@ -1,18 +1,17 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
-import collections
+from typing import IO
+from typing import NamedTuple
+from typing import Optional
+from typing import Sequence
 
-DEFAULT_PRAGMA = b'# -*- coding: utf-8 -*-\n'
+DEFAULT_PRAGMA = b'# -*- coding: utf-8 -*-'
 
 
-def has_coding(line):
+def has_coding(line: bytes) -> bool:
     if not line.strip():
         return False
     return (
-        line.lstrip()[0:1] == b'#' and (
+        line.lstrip()[:1] == b'#' and (
             b'unicode' in line or
             b'encoding' in line or
             b'coding:' in line or
@@ -21,27 +20,32 @@ def has_coding(line):
     )
 
 
-class ExpectedContents(collections.namedtuple(
-        'ExpectedContents', ('shebang', 'rest', 'pragma_status'),
-)):
-    """
-    pragma_status:
-    - True: has exactly the coding pragma expected
-    - False: missing coding pragma entirely
-    - None: has a coding pragma, but it does not match
-    """
-    __slots__ = ()
+class ExpectedContents(NamedTuple):
+    shebang: bytes
+    rest: bytes
+    # True: has exactly the coding pragma expected
+    # False: missing coding pragma entirely
+    # None: has a coding pragma, but it does not match
+    pragma_status: Optional[bool]
+    ending: bytes
 
     @property
-    def has_any_pragma(self):
+    def has_any_pragma(self) -> bool:
         return self.pragma_status is not False
 
-    def is_expected_pragma(self, remove):
+    def is_expected_pragma(self, remove: bool) -> bool:
         expected_pragma_status = not remove
         return self.pragma_status is expected_pragma_status
 
 
-def _get_expected_contents(first_line, second_line, rest, expected_pragma):
+def _get_expected_contents(
+        first_line: bytes,
+        second_line: bytes,
+        rest: bytes,
+        expected_pragma: bytes,
+) -> ExpectedContents:
+    ending = b'\r\n' if first_line.endswith(b'\r\n') else b'\n'
+
     if first_line.startswith(b'#!'):
         shebang = first_line
         potential_coding = second_line
@@ -50,8 +54,8 @@ def _get_expected_contents(first_line, second_line, rest, expected_pragma):
         potential_coding = first_line
         rest = second_line + rest
 
-    if potential_coding == expected_pragma:
-        pragma_status = True
+    if potential_coding.rstrip(b'\r\n') == expected_pragma:
+        pragma_status: Optional[bool] = True
     elif has_coding(potential_coding):
         pragma_status = None
     else:
@@ -59,11 +63,15 @@ def _get_expected_contents(first_line, second_line, rest, expected_pragma):
         rest = potential_coding + rest
 
     return ExpectedContents(
-        shebang=shebang, rest=rest, pragma_status=pragma_status,
+        shebang=shebang, rest=rest, pragma_status=pragma_status, ending=ending,
     )
 
 
-def fix_encoding_pragma(f, remove=False, expected_pragma=DEFAULT_PRAGMA):
+def fix_encoding_pragma(
+        f: IO[bytes],
+        remove: bool = False,
+        expected_pragma: bytes = DEFAULT_PRAGMA,
+) -> int:
     expected = _get_expected_contents(
         f.readline(), f.readline(), f.read(), expected_pragma,
     )
@@ -87,29 +95,26 @@ def fix_encoding_pragma(f, remove=False, expected_pragma=DEFAULT_PRAGMA):
     f.truncate()
     f.write(expected.shebang)
     if not remove:
-        f.write(expected_pragma)
+        f.write(expected_pragma + expected.ending)
     f.write(expected.rest)
 
     return 1
 
 
-def _normalize_pragma(pragma):
-    if not isinstance(pragma, bytes):
-        pragma = pragma.encode('UTF-8')
-    return pragma.rstrip() + b'\n'
+def _normalize_pragma(pragma: str) -> bytes:
+    return pragma.encode().rstrip()
 
 
-def _to_disp(pragma):
-    return pragma.decode().rstrip()
-
-
-def main(argv=None):
-    parser = argparse.ArgumentParser('Fixes the encoding pragma of python files')
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(
+        'Fixes the encoding pragma of python files',
+    )
     parser.add_argument('filenames', nargs='*', help='Filenames to fix')
     parser.add_argument(
         '--pragma', default=DEFAULT_PRAGMA, type=_normalize_pragma,
-        help='The encoding pragma to use.  Default: {}'.format(
-            _to_disp(DEFAULT_PRAGMA),
+        help=(
+            f'The encoding pragma to use.  '
+            f'Default: {DEFAULT_PRAGMA.decode()}'
         ),
     )
     parser.add_argument(
@@ -132,12 +137,12 @@ def main(argv=None):
             )
             retv |= file_ret
             if file_ret:
-                print(fmt.format(
-                    pragma=_to_disp(args.pragma), filename=filename,
-                ))
+                print(
+                    fmt.format(pragma=args.pragma.decode(), filename=filename),
+                )
 
     return retv
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     exit(main())

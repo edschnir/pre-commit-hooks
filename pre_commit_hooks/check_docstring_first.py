@@ -1,18 +1,17 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import io
 import tokenize
-
+from tokenize import tokenize as tokenize_tokenize
+from typing import Optional
+from typing import Sequence
 
 NON_CODE_TOKENS = frozenset((
     tokenize.COMMENT, tokenize.ENDMARKER, tokenize.NEWLINE, tokenize.NL,
+    tokenize.ENCODING,
 ))
 
 
-def check_docstring_first(src, filename='<unknown>'):
+def check_docstring_first(src: bytes, filename: str = '<unknown>') -> int:
     """Returns nonzero if the source has what looks like a docstring that is
     not at the beginning of the source.
 
@@ -22,24 +21,20 @@ def check_docstring_first(src, filename='<unknown>'):
     found_docstring_line = None
     found_code_line = None
 
-    tok_gen = tokenize.generate_tokens(io.StringIO(src).readline)
+    tok_gen = tokenize_tokenize(io.BytesIO(src).readline)
     for tok_type, _, (sline, scol), _, _ in tok_gen:
         # Looks like a docstring!
         if tok_type == tokenize.STRING and scol == 0:
             if found_docstring_line is not None:
                 print(
-                    '{}:{} Multiple module docstrings '
-                    '(first docstring on line {}).'.format(
-                        filename, sline, found_docstring_line,
-                    ),
+                    f'{filename}:{sline} Multiple module docstrings '
+                    f'(first docstring on line {found_docstring_line}).',
                 )
                 return 1
             elif found_code_line is not None:
                 print(
-                    '{}:{} Module docstring appears after code '
-                    '(code seen on line {}).'.format(
-                        filename, sline, found_code_line,
-                    ),
+                    f'{filename}:{sline} Module docstring appears after code '
+                    f'(code seen on line {found_code_line}).',
                 )
                 return 1
             else:
@@ -50,7 +45,7 @@ def check_docstring_first(src, filename='<unknown>'):
     return 0
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
     args = parser.parse_args(argv)
@@ -58,7 +53,7 @@ def main(argv=None):
     retv = 0
 
     for filename in args.filenames:
-        with io.open(filename, encoding='UTF-8') as f:
+        with open(filename, 'rb') as f:
             contents = f.read()
         retv |= check_docstring_first(contents, filename=filename)
 

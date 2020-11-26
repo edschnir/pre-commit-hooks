@@ -1,12 +1,10 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import os.path
+from typing import Optional
+from typing import Sequence
 
 
-def check_symlinks(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description='Checks for broken symlinks.')
     parser.add_argument('filenames', nargs='*', help='Filenames to check')
     args = parser.parse_args(argv)
@@ -18,11 +16,11 @@ def check_symlinks(argv=None):
                 os.path.islink(filename) and
                 not os.path.exists(filename)
         ):  # pragma: no cover (symlink support required)
-            print('{}: Broken symlink'.format(filename))
+            print(f'{filename}: Broken symlink')
             retv = 1
 
     return retv
 
 
 if __name__ == '__main__':
-    exit(check_symlinks())
+    exit(main())

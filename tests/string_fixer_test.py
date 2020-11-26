@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import textwrap
 
 import pytest
@@ -44,8 +40,15 @@ TESTS = (
 
 @pytest.mark.parametrize(('input_s', 'output', 'expected_retval'), TESTS)
 def test_rewrite(input_s, output, expected_retval, tmpdir):
-    path = tmpdir.join('file.txt')
+    path = tmpdir.join('file.py')
     path.write(input_s)
-    retval = main([path.strpath])
+    retval = main([str(path)])
     assert path.read() == output
     assert retval == expected_retval
+
+
+def test_rewrite_crlf(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write_binary(b'"foo"\r\n"bar"\r\n')
+    assert main((str(f),))
+    assert f.read_binary() == b"'foo'\r\n'bar'\r\n"

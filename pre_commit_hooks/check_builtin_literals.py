@@ -1,9 +1,10 @@
-from __future__ import unicode_literals
-
 import argparse
 import ast
-import collections
-import sys
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Sequence
+from typing import Set
 
 
 BUILTIN_TYPES = {
@@ -17,19 +18,26 @@ BUILTIN_TYPES = {
 }
 
 
-BuiltinTypeCall = collections.namedtuple('BuiltinTypeCall', ['name', 'line', 'column'])
+class Call(NamedTuple):
+    name: str
+    line: int
+    column: int
 
 
-class BuiltinTypeVisitor(ast.NodeVisitor):
-    def __init__(self, ignore=None, allow_dict_kwargs=True):
-        self.builtin_type_calls = []
+class Visitor(ast.NodeVisitor):
+    def __init__(
+            self,
+            ignore: Optional[Sequence[str]] = None,
+            allow_dict_kwargs: bool = True,
+    ) -> None:
+        self.builtin_type_calls: List[Call] = []
         self.ignore = set(ignore) if ignore else set()
         self.allow_dict_kwargs = allow_dict_kwargs
 
-    def _check_dict_call(self, node):
-        return self.allow_dict_kwargs and (getattr(node, 'kwargs', None) or getattr(node, 'keywords', None))
+    def _check_dict_call(self, node: ast.Call) -> bool:
+        return self.allow_dict_kwargs and bool(node.keywords)
 
-    def visit_Call(self, node):
+    def visit_Call(self, node: ast.Call) -> None:
         if not isinstance(node.func, ast.Name):
             # Ignore functions that are object attributes (`foo.bar()`).
             # Assume that if the user calls `builtins.list()`, they know what
@@ -42,39 +50,44 @@ class BuiltinTypeVisitor(ast.NodeVisitor):
         elif node.args:
             return
         self.builtin_type_calls.append(
-            BuiltinTypeCall(node.func.id, node.lineno, node.col_offset),
+            Call(node.func.id, node.lineno, node.col_offset),
         )
 
 
-def check_file_for_builtin_type_constructors(filename, ignore=None, allow_dict_kwargs=True):
+def check_file(
+        filename: str,
+        ignore: Optional[Sequence[str]] = None,
+        allow_dict_kwargs: bool = True,
+) -> List[Call]:
     with open(filename, 'rb') as f:
         tree = ast.parse(f.read(), filename=filename)
-    visitor = BuiltinTypeVisitor(ignore=ignore, allow_dict_kwargs=allow_dict_kwargs)
+    visitor = Visitor(ignore=ignore, allow_dict_kwargs=allow_dict_kwargs)
     visitor.visit(tree)
     return visitor.builtin_type_calls
 
 
-def parse_args(argv):
-    def parse_ignore(value):
-        return set(value.split(','))
+def parse_ignore(value: str) -> Set[str]:
+    return set(value.split(','))
 
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
     parser.add_argument('--ignore', type=parse_ignore, default=set())
 
-    allow_dict_kwargs = parser.add_mutually_exclusive_group(required=False)
-    allow_dict_kwargs.add_argument('--allow-dict-kwargs', action='store_true')
-    allow_dict_kwargs.add_argument('--no-allow-dict-kwargs', dest='allow_dict_kwargs', action='store_false')
-    allow_dict_kwargs.set_defaults(allow_dict_kwargs=True)
+    mutex = parser.add_mutually_exclusive_group(required=False)
+    mutex.add_argument('--allow-dict-kwargs', action='store_true')
+    mutex.add_argument(
+        '--no-allow-dict-kwargs',
+        dest='allow_dict_kwargs', action='store_false',
+    )
+    mutex.set_defaults(allow_dict_kwargs=True)
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
 
-
-def main(argv=None):
-    args = parse_args(argv)
     rc = 0
     for filename in args.filenames:
-        calls = check_file_for_builtin_type_constructors(
+        calls = check_file(
             filename,
             ignore=args.ignore,
             allow_dict_kwargs=args.allow_dict_kwargs,
@@ -83,14 +96,11 @@ def main(argv=None):
             rc = rc or 1
         for call in calls:
             print(
-                '{filename}:{call.line}:{call.column} - Replace {call.name}() with {replacement}'.format(
-                    filename=filename,
-                    call=call,
-                    replacement=BUILTIN_TYPES[call.name],
-                ),
+                f'{filename}:{call.line}:{call.column}: '
+                f'replace {call.name}() with {BUILTIN_TYPES[call.name]}',
             )
     return rc
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    exit(main())

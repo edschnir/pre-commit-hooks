@@ -1,7 +1,8 @@
 import argparse
-import json
 from typing import Optional
 from typing import Sequence
+
+import toml
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -11,12 +12,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     retval = 0
     for filename in args.filenames:
-        with open(filename, 'rb') as f:
-            try:
-                json.load(f)
-            except ValueError as exc:
-                print(f'{filename}: Failed to json decode ({exc})')
-                retval = 1
+        try:
+            toml.load(filename)
+        except toml.TomlDecodeError as exc:
+            print(f'{filename}: {exc}')
+            retval = 1
     return retval
 
 

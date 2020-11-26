@@ -1,10 +1,10 @@
+import os
 import shutil
 
 import pytest
-from six import PY2
 
+from pre_commit_hooks.pretty_format_json import main
 from pre_commit_hooks.pretty_format_json import parse_num_to_int
-from pre_commit_hooks.pretty_format_json import pretty_format_json
 from testing.util import get_resource_path
 
 
@@ -23,8 +23,8 @@ def test_parse_num_to_int():
         ('pretty_formatted_json.json', 0),
     ),
 )
-def test_pretty_format_json(filename, expected_retval):
-    ret = pretty_format_json([get_resource_path(filename)])
+def test_main(filename, expected_retval):
+    ret = main([get_resource_path(filename)])
     assert ret == expected_retval
 
 
@@ -36,12 +36,11 @@ def test_pretty_format_json(filename, expected_retval):
         ('pretty_formatted_json.json', 0),
     ),
 )
-def test_unsorted_pretty_format_json(filename, expected_retval):
-    ret = pretty_format_json(['--no-sort-keys', get_resource_path(filename)])
+def test_unsorted_main(filename, expected_retval):
+    ret = main(['--no-sort-keys', get_resource_path(filename)])
     assert ret == expected_retval
 
 
-@pytest.mark.skipif(PY2, reason="Requires Python3")
 @pytest.mark.parametrize(
     ('filename', 'expected_retval'), (
         ('not_pretty_formatted_json.json', 1),
@@ -51,48 +50,88 @@ def test_unsorted_pretty_format_json(filename, expected_retval):
         ('tab_pretty_formatted_json.json', 0),
     ),
 )
-def test_tab_pretty_format_json(filename, expected_retval):  # pragma: no cover
-    ret = pretty_format_json(['--indent', '\t', get_resource_path(filename)])
+def test_tab_main(filename, expected_retval):
+    ret = main(['--indent', '\t', get_resource_path(filename)])
     assert ret == expected_retval
 
 
-def test_non_ascii_pretty_format_json():
-    ret = pretty_format_json(['--no-ensure-ascii', get_resource_path('non_ascii_pretty_formatted_json.json')])
+def test_non_ascii_main():
+    ret = main((
+        '--no-ensure-ascii',
+        get_resource_path('non_ascii_pretty_formatted_json.json'),
+    ))
     assert ret == 0
 
 
-def test_autofix_pretty_format_json(tmpdir):
+def test_autofix_main(tmpdir):
     srcfile = tmpdir.join('to_be_json_formatted.json')
     shutil.copyfile(
         get_resource_path('not_pretty_formatted_json.json'),
-        srcfile.strpath,
+        str(srcfile),
     )
 
     # now launch the autofix on that file
-    ret = pretty_format_json(['--autofix', srcfile.strpath])
+    ret = main(['--autofix', str(srcfile)])
     # it should have formatted it
     assert ret == 1
 
     # file was formatted (shouldn't trigger linter again)
-    ret = pretty_format_json([srcfile.strpath])
+    ret = main([str(srcfile)])
     assert ret == 0
 
 
 def test_orderfile_get_pretty_format():
-    ret = pretty_format_json(['--top-keys=alist', get_resource_path('pretty_formatted_json.json')])
+    ret = main((
+        '--top-keys=alist', get_resource_path('pretty_formatted_json.json'),
+    ))
     assert ret == 0
 
 
 def test_not_orderfile_get_pretty_format():
-    ret = pretty_format_json(['--top-keys=blah', get_resource_path('pretty_formatted_json.json')])
+    ret = main((
+        '--top-keys=blah', get_resource_path('pretty_formatted_json.json'),
+    ))
     assert ret == 1
 
 
 def test_top_sorted_get_pretty_format():
-    ret = pretty_format_json(['--top-keys=01-alist,alist', get_resource_path('top_sorted_json.json')])
+    ret = main((
+        '--top-keys=01-alist,alist', get_resource_path('top_sorted_json.json'),
+    ))
     assert ret == 0
 
 
-def test_badfile_pretty_format_json():
-    ret = pretty_format_json([get_resource_path('ok_yaml.yaml')])
+def test_badfile_main():
+    ret = main([get_resource_path('ok_yaml.yaml')])
     assert ret == 1
+
+
+def test_diffing_output(capsys):
+    resource_path = get_resource_path('not_pretty_formatted_json.json')
+    expected_retval = 1
+    a = os.path.join('a', resource_path)
+    b = os.path.join('b', resource_path)
+    expected_out = f'''\
+--- {a}
++++ {b}
+@@ -1,6 +1,9 @@
+ {{
+-    "foo":
+-    "bar",
+-        "alist": [2, 34, 234],
+-  "blah": null
++  "alist": [
++    2,
++    34,
++    234
++  ],
++  "blah": null,
++  "foo": "bar"
+ }}
+'''
+    actual_retval = main([resource_path])
+    actual_out, actual_err = capsys.readouterr()
+
+    assert actual_retval == expected_retval
+    assert actual_out == expected_out
+    assert actual_err == ''

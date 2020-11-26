@@ -1,6 +1,6 @@
 import pytest
 
-from pre_commit_hooks.check_json import check_json
+from pre_commit_hooks.check_json import main
 from testing.util import get_resource_path
 
 
@@ -11,9 +11,15 @@ from testing.util import get_resource_path
         ('ok_json.json', 0),
     ),
 )
-def test_check_json(capsys, filename, expected_retval):
-    ret = check_json([get_resource_path(filename)])
+def test_main(capsys, filename, expected_retval):
+    ret = main([get_resource_path(filename)])
     assert ret == expected_retval
     if expected_retval == 1:
         stdout, _ = capsys.readouterr()
         assert filename in stdout
+
+
+def test_non_utf8_file(tmpdir):
+    f = tmpdir.join('t.json')
+    f.write_binary(b'\xa9\xfe\x12')
+    assert main((str(f),))
